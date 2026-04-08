@@ -2,19 +2,18 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from config import settings
 from database import Base, SessionLocal, engine
 from routers.admin import router as admin_router
 from routers.device import router as device_router
 from routers.plans import router as plans_router
-from routers.receipts import router as receipts_router
+from routers.payments import router as payments_router
 from routers.servers import router as servers_router
 from routers.subscription import router as subscription_router
+from routers.vpn import router as vpn_router
+from routers.webhooks import router as webhooks_router
 from services.seed_service import seed_tariff_plans
-
-settings.upload_path.mkdir(parents=True, exist_ok=True)
 
 
 @asynccontextmanager
@@ -27,7 +26,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -40,16 +39,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory=settings.upload_path), name="uploads")
-
 app.include_router(device_router)
 app.include_router(plans_router)
-app.include_router(receipts_router)
+app.include_router(payments_router)
 app.include_router(subscription_router)
 app.include_router(servers_router)
+app.include_router(vpn_router)
 app.include_router(admin_router)
+app.include_router(webhooks_router)
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "service": settings.app_name}

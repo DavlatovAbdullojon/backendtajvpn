@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from database import get_db
+from models import ensure_utc
 from schemas import DeviceInitRequest, DeviceInitResponse
 from services.device_service import get_or_create_device
-from services.subscription_service import allows_vpn, ensure_subscription
 
 
 router = APIRouter(tags=["device"])
@@ -19,13 +19,10 @@ def init_device(payload: DeviceInitRequest, db: Session = Depends(get_db)) -> De
         app_version=payload.app_version,
         device_model=payload.device_model,
     )
-    subscription = ensure_subscription(db, device)
     db.commit()
     db.refresh(device)
-    db.refresh(subscription)
     return DeviceInitResponse(
         deviceId=device.device_id,
-        accessStatus=subscription.access_status,
-        vpnAllowed=allows_vpn(subscription.access_status),
-        subscriptionExpiresAt=subscription.ends_at,
+        createdAt=ensure_utc(device.first_seen_at) or device.first_seen_at,
+        lastSeenAt=ensure_utc(device.last_seen_at) or device.last_seen_at,
     )

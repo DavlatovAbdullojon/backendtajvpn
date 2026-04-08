@@ -13,6 +13,14 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def ensure_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 class AccessStatus(str, Enum):
     INACTIVE = "inactive"
     ACTIVE = "active"
@@ -49,6 +57,9 @@ class TariffPlan(Base):
     description: Mapped[str] = mapped_column(String(255))
     amount_rub: Mapped[int] = mapped_column(Integer)
     duration_days: Mapped[int] = mapped_column(Integer)
+    benefits_json: Mapped[str] = mapped_column(Text, default="[]")
+    badge: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    discount_percent: Mapped[int] = mapped_column(Integer, default=0)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
@@ -68,6 +79,7 @@ class Payment(Base):
     amount_rub: Mapped[int] = mapped_column(Integer)
     currency: Mapped[str] = mapped_column(String(16), default="RUB")
     status: Mapped[PaymentStatus] = mapped_column(SqlEnum(PaymentStatus), default=PaymentStatus.PENDING, index=True)
+    provider_status: Mapped[str | None] = mapped_column(String(64), nullable=True)
     provider: Mapped[str] = mapped_column(String(32), default="enot")
     enot_invoice_id: Mapped[str | None] = mapped_column(String(128), unique=True, nullable=True, index=True)
     enot_payment_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
@@ -76,11 +88,11 @@ class Payment(Base):
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user_device: Mapped["UserDevice"] = relationship(back_populates="payments")
     tariff_plan: Mapped["TariffPlan"] = relationship(back_populates="payments")
-    linked_subscription: Mapped["Subscription | None"] = relationship(back_populates="last_payment", uselist=False)
 
 
 class Subscription(Base):
@@ -97,4 +109,4 @@ class Subscription(Base):
 
     user_device: Mapped["UserDevice"] = relationship(back_populates="subscription")
     tariff_plan: Mapped["TariffPlan | None"] = relationship(back_populates="subscriptions")
-    last_payment: Mapped["Payment | None"] = relationship(back_populates="linked_subscription")
+    last_payment: Mapped["Payment | None"] = relationship(foreign_keys=[last_payment_id])

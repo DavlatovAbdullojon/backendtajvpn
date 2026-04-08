@@ -1,9 +1,8 @@
 from datetime import datetime
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from models import AccessStatus, PaymentStatus
+from models import AccessStatus
 
 
 class ApiModel(BaseModel):
@@ -19,9 +18,8 @@ class DeviceInitRequest(ApiModel):
 
 class DeviceInitResponse(ApiModel):
     device_id: str = Field(..., alias="deviceId")
-    access_status: AccessStatus = Field(..., alias="accessStatus")
-    vpn_allowed: bool = Field(..., alias="vpnAllowed")
-    expires_at: datetime | None = Field(default=None, alias="expiresAt")
+    created_at: datetime = Field(..., alias="createdAt")
+    last_seen_at: datetime = Field(..., alias="lastSeenAt")
 
 
 class TariffPlanResponse(ApiModel):
@@ -30,7 +28,10 @@ class TariffPlanResponse(ApiModel):
     description: str
     amount_rub: int = Field(..., alias="amountRub")
     duration_days: int = Field(..., alias="durationDays")
-    is_featured: bool = Field(..., alias="isFeatured")
+    benefits: list[str] = Field(default_factory=list)
+    badge: str | None = None
+    discount_percent: int = Field(default=0, alias="discountPercent")
+    is_featured: bool = Field(default=False, alias="isFeatured")
 
 
 class PaymentCreateRequest(ApiModel):
@@ -38,52 +39,33 @@ class PaymentCreateRequest(ApiModel):
     plan_id: str = Field(..., alias="planId")
 
 
-class PaymentCreateResponse(ApiModel):
+class PaymentOrderResponse(ApiModel):
     payment_id: str = Field(..., alias="paymentId")
     device_id: str = Field(..., alias="deviceId")
     plan_id: str = Field(..., alias="planId")
     amount_rub: int = Field(..., alias="amountRub")
-    status: PaymentStatus
+    created_at: datetime = Field(..., alias="createdAt")
+    expires_at: datetime = Field(..., alias="expiresAt")
     payment_url: str | None = Field(default=None, alias="paymentUrl")
     provider_invoice_id: str | None = Field(default=None, alias="providerInvoiceId")
-    expires_at: datetime | None = Field(default=None, alias="expiresAt")
+    qr_code_url: str | None = Field(default=None, alias="qrCodeUrl")
+    qr_payload: str | None = Field(default=None, alias="qrPayload")
 
 
 class PaymentStatusResponse(ApiModel):
     payment_id: str = Field(..., alias="paymentId")
-    device_id: str = Field(..., alias="deviceId")
-    plan_id: str = Field(..., alias="planId")
-    amount_rub: int = Field(..., alias="amountRub")
-    status: PaymentStatus
-    payment_url: str | None = Field(default=None, alias="paymentUrl")
-    provider_invoice_id: str | None = Field(default=None, alias="providerInvoiceId")
-    paid_at: datetime | None = Field(default=None, alias="paidAt")
-    expires_at: datetime | None = Field(default=None, alias="expiresAt")
-    access_status: AccessStatus = Field(..., alias="accessStatus")
-    vpn_allowed: bool = Field(..., alias="vpnAllowed")
-    message: str
-
-
-class ENOTWebhookPayload(ApiModel):
-    invoice_id: str = Field(..., alias="invoice_id")
-    order_id: str = Field(..., alias="order_id")
-    amount: float
-    currency: str
-    status: str
-    credited: str | float | int | None = None
-    shop_id: str = Field(..., alias="shop_id")
-    hook_id: str | None = Field(default=None, alias="hook_id")
-    type: int | None = None
-    custom_fields: dict[str, Any] | None = Field(default=None, alias="custom_fields")
+    state: str = Field(..., alias="status")
+    checked_at: datetime = Field(..., alias="checkedAt")
+    title: str
+    detail: str
+    activated_until: datetime | None = Field(default=None, alias="activatedUntil")
 
 
 class SubscriptionStatusResponse(ApiModel):
     device_id: str = Field(..., alias="deviceId")
     access_status: AccessStatus = Field(..., alias="accessStatus")
-    vpn_allowed: bool = Field(..., alias="vpnAllowed")
+    fetched_at: datetime = Field(..., alias="fetchedAt")
     expires_at: datetime | None = Field(default=None, alias="expiresAt")
-    tariff_plan_id: str | None = Field(default=None, alias="tariffPlanId")
-    tariff_plan_title: str | None = Field(default=None, alias="tariffPlanTitle")
     message: str
 
 
@@ -93,8 +75,9 @@ class ServerResponse(ApiModel):
     country_code: str = Field(..., alias="countryCode")
     city: str
     host: str
-    is_online: bool = Field(..., alias="isOnline")
-    load_percent: int = Field(..., alias="loadPercent")
+    latency_ms: int | None = Field(default=None, alias="latencyMs")
+    is_online: bool = Field(default=True, alias="isOnline")
+    is_recommended: bool = Field(default=False, alias="isRecommended")
 
 
 class VpnSessionRequest(ApiModel):
@@ -111,3 +94,53 @@ class VpnSessionResponse(ApiModel):
     auth_token: str = Field(..., alias="authToken")
     dns_servers: list[str] = Field(..., alias="dnsServers")
     mtu: int
+
+
+class AdminStatsResponse(ApiModel):
+    total_devices: int = Field(..., alias="totalDevices")
+    active_subscriptions: int = Field(..., alias="activeSubscriptions")
+    pending_payments: int = Field(..., alias="pendingPayments")
+    paid_payments: int = Field(..., alias="paidPayments")
+    failed_payments: int = Field(..., alias="failedPayments")
+    revenue_rub: int = Field(..., alias="revenueRub")
+
+
+class AdminPaymentResponse(ApiModel):
+    payment_id: str = Field(..., alias="paymentId")
+    device_id: str = Field(..., alias="deviceId")
+    plan_id: str = Field(..., alias="planId")
+    plan_title: str = Field(..., alias="planTitle")
+    amount_rub: int = Field(..., alias="amountRub")
+    status: str
+    provider_status: str | None = Field(default=None, alias="providerStatus")
+    payment_url: str | None = Field(default=None, alias="paymentUrl")
+    created_at: datetime = Field(..., alias="createdAt")
+    expires_at: datetime | None = Field(default=None, alias="expiresAt")
+    paid_at: datetime | None = Field(default=None, alias="paidAt")
+    failure_reason: str | None = Field(default=None, alias="failureReason")
+
+
+class AdminDeviceResponse(ApiModel):
+    device_id: str = Field(..., alias="deviceId")
+    platform: str
+    app_version: str | None = Field(default=None, alias="appVersion")
+    device_model: str | None = Field(default=None, alias="deviceModel")
+    first_seen_at: datetime = Field(..., alias="firstSeenAt")
+    last_seen_at: datetime = Field(..., alias="lastSeenAt")
+    access_status: AccessStatus = Field(..., alias="accessStatus")
+    subscription_ends_at: datetime | None = Field(default=None, alias="subscriptionEndsAt")
+    active_plan_title: str | None = Field(default=None, alias="activePlanTitle")
+    total_payments: int = Field(..., alias="totalPayments")
+    last_payment_at: datetime | None = Field(default=None, alias="lastPaymentAt")
+
+
+class AdminOverviewResponse(ApiModel):
+    stats: AdminStatsResponse
+    recent_payments: list[AdminPaymentResponse] = Field(default_factory=list, alias="recentPayments")
+    devices: list[AdminDeviceResponse] = Field(default_factory=list)
+
+
+class AdminActionResponse(ApiModel):
+    message: str
+    device_id: str = Field(..., alias="deviceId")
+    access_status: AccessStatus = Field(..., alias="accessStatus")

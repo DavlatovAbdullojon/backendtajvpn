@@ -1,33 +1,44 @@
 from schemas import ServerResponse
 
 
+SERVERS = [
+    ServerResponse(
+        id="tr-istanbul-01",
+        country="Турция",
+        countryCode="TR",
+        city="Стамбул",
+        host="tr-istanbul-01.tajvpn.com",
+        latencyMs=43,
+        isOnline=True,
+        isRecommended=True,
+    ),
+    ServerResponse(
+        id="de-frankfurt-01",
+        country="Германия",
+        countryCode="DE",
+        city="Франкфурт",
+        host="de-frankfurt-01.tajvpn.com",
+        latencyMs=58,
+        isOnline=True,
+    ),
+    ServerResponse(
+        id="nl-amsterdam-01",
+        country="Нидерланды",
+        countryCode="NL",
+        city="Амстердам",
+        host="nl-amsterdam-01.tajvpn.com",
+        latencyMs=64,
+        isOnline=True,
+    ),
+]
+
+
 def get_servers() -> list[ServerResponse]:
-    return [
-        ServerResponse(
-            id="nl-ams-1",
-            country="Нидерланды",
-            countryCode="NL",
-            city="Амстердам",
-            host="nl-ams-1.example.com",
-            isOnline=True,
-            loadPercent=26,
-        ),
-        ServerResponse(
-            id="de-fra-1",
-            country="Германия",
-            countryCode="DE",
-            city="Франкфурт",
-            host="de-fra-1.example.com",
-            isOnline=True,
-            loadPercent=34,
-        ),
-        ServerResponse(
-            id="pl-waw-1",
-            country="Польша",
-            countryCode="PL",
-            city="Варшава",
-            host="pl-waw-1.example.com",
-            isOnline=True,
-            loadPercent=19,
-        ),
-    ]
+    return SERVERS
+
+
+def get_server_by_id(server_id: str) -> ServerResponse | None:
+    for server in SERVERS:
+        if server.id == server_id:
+            return server
+    return None
